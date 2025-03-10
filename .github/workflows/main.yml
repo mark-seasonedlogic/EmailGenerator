@@ -1,0 +1,46 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test --no-restore --verbosity normal
+     ```
+
+**Explanation:**
+- **`name:`** Specifies the name of the workflow.
+- **`on:`** Defines the events that trigger the workflow:
+  - **`push:`** Triggers when there's a push to the `main` branch.
+  - **`pull_request:`** Triggers when a pull request is opened for the `main` branch.
+- **`jobs:`** Lists the jobs to be executed:
+  - **`build:`** The primary job that runs the build and tests:
+    - **`runs-on:`** Specifies the operating system for the job; `windows-latest` uses the latest Windows Server image.
+    - **`steps:`** Details the sequence of steps:
+      - **`Checkout code:`** Retrieves your repository's code.
+      - **`Set up .NET:`** Installs the specified .NET SDK version.
+      - **`Restore dependencies:`** Restores NuGet packages.
+      - **`Build solution:`** Builds the project in Release configuration.
+      - **`Run tests:`** Executes any unit tests present in the solution.
+

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
@@ -14,6 +14,8 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="EmailHTMLEditorNativeWindow.xaml" />
+    <None Remove="EmailHTMLEditorWindow.xaml" />
     <None Remove="PreviewWindow.xaml" />
   </ItemGroup>
 
@@ -34,13 +36,64 @@
 
   <ItemGroup>
     <PackageReference Include="CsvHelper" Version="33.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0-preview.2.25163.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0-preview.2.25163.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="10.0.0-preview.2.25163.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0-preview.2.25163.2" />
     <PackageReference Include="Microsoft.Office.Interop.Outlook" Version="15.0.4797.1004" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2651.64" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250205002" />
     <PackageReference Include="MimeKit" Version="4.10.0" />
     <PackageReference Include="MsgKit" Version="2.8.3" />
     <PackageReference Include="MsgReader" Version="5.7.2" />
     <PackageReference Include="OpenMcdf" Version="2.4.1" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Page Update="EmailHTMLEditorNativeWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="EmailTemplates\email_template_content.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="EmailTemplates\email_template_shell.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="EmailTemplates\Untitled_files\colorschememapping.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="EmailTemplates\Untitled_files\filelist.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="EmailTemplates\Untitled_files\themedata.thmx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="wwwroot\tinymce\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Update="EmailTemplates\Untitled_files\image001.jpg">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="EmailTemplates\Untitled_files\image002.jpg">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="EmailTemplates\Untitled_files\image003.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Page Update="EmailHTMLEditorWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
 
 

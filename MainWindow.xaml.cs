@@ -22,22 +22,32 @@ using Windows.Graphics;
 using MimeKit;
 using OpenMcdf;
 using MsgKit;
+using Microsoft.Extensions.Configuration;
+using static Org.BouncyCastle.Math.EC.ECCurve;
 
 namespace OutlookDeviceEmailer
 {
     public partial class MainWindow : Window
     {
+        private readonly IConfiguration _config;
         private string deviceFilePath;
         private string emailFilePath;
+        private readonly Dictionary<string, string> conceptMappings;
 
         public MainWindow()
         {
+            _config = new ConfigurationBuilder()
+                .SetBasePath(AppContext.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .Build();
+
+            conceptMappings = _config.GetSection("ConceptMappings").Get<Dictionary<string, string>>();
+
             InitializeComponent();
             ApplyAcrylicEffect();
             SetRoundedCorners();
-            SetWindowSize(600, 400); // Set width and height
+            SetWindowSize(600, 400);
         }
-
         private void SetWindowSize(int width, int height)
         {
             IntPtr hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
@@ -46,6 +56,17 @@ namespace OutlookDeviceEmailer
 
             appWindow.Resize(new SizeInt32(width, height));
         }
+
+        private string GetConceptAbbreviationFromCode(string conceptCode)
+        {
+            return conceptMappings.TryGetValue(conceptCode, out string abbreviation) ? abbreviation : "UNKNOWN";
+        }
+
+        private string GetConfiguredField(string key)
+        {
+            return _config[$"FieldMappings:{key}"] ?? key;
+        }
+
         private void EditTemplate_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrEmpty(deviceFilePath) || string.IsNullOrEmpty(emailFilePath))
@@ -54,7 +75,9 @@ namespace OutlookDeviceEmailer
                 return;
             }
 
-            EmailEditorWindow editorWindow = new EmailEditorWindow(deviceFilePath, emailFilePath);
+            //EmailEditorWindow editorWindow = new EmailEditorWindow(deviceFilePath, emailFilePath);
+            //EmailHTMLEditorNativeWindow editorWindow = new EmailHTMLEditorNativeWindow();
+            EmailHTMLEditorWindow editorWindow = new EmailHTMLEditorWindow();
             editorWindow.Activate();
         }
 
@@ -181,33 +204,25 @@ namespace OutlookDeviceEmailer
                     throw new Exception("Restaurant directory CSV file is empty or missing headers.");
                 }
 
-                // Get column headers dynamically
                 var headers = csv.HeaderRecord.ToList();
 
                 while (csv.Read())
                 {
-                    // Extract `CONCEPT_CD` and `RSTRNT_NBR`
-                    string conceptCode = csv.GetField("CONCEPT_CD")?.Trim();
-                    string restaurantNumber = csv.GetField("RSTRNT_NBR")?.Trim();
+                    string conceptCode = csv.GetField(GetConfiguredField("CONCEPT_CD"))?.Trim();
+                    string restaurantNumber = csv.GetField(GetConfiguredField("RSTRNT_NBR"))?.Trim();
 
-                    // Validate values
                     if (string.IsNullOrEmpty(conceptCode) || string.IsNullOrEmpty(restaurantNumber))
                         continue;
 
-                    // Convert `CONCEPT_CD` and pad `RSTRNT_NBR` to 4 digits
                     string conceptAbbreviation = GetConceptAbbreviationFromCode(conceptCode);
                     string paddedRestaurantNumber = restaurantNumber.PadLeft(4, '0');
-
-                    // Create the unique lookup key
                     string lookupKey = $"{paddedRestaurantNumber}{conceptAbbreviation}";
 
-                    // Store all restaurant details dynamically
                     var restaurantData = new Dictionary<string, string>();
-
                     foreach (var header in headers)
                     {
                         string value = csv.GetField(header)?.Trim();
-                        restaurantData[header] = value; // Store dynamically
+                        restaurantData[header] = value;
                     }
 
                     emailLookup[lookupKey] = restaurantData;
@@ -279,42 +294,37 @@ namespace OutlookDeviceEmailer
             using (var reader = new StreamReader(emailFile))
             using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)))
             {
-                if (csv.Read())
+                if (!csv.Read() || !csv.ReadHeader())
                 {
-                    csv.ReadHeader();
-                }
-                else
-                {
-                    throw new Exception("Email CSV file is empty.");
+                    throw new Exception("Email CSV file is empty or missing headers.");
                 }
 
                 while (csv.Read())
                 {
-                    string restaurantName = csv.GetField("RSTRNT_LEGAL_NAME")?.Trim();
-                    string email = csv.GetField("STORE_EMAIL_ADDR")?.Trim();
-                    string address = csv.GetField("ADDR_LINE1_TXT")?.Trim();
-                    string city = csv.GetField("CITY_NAME")?.Trim();
-                    string state = csv.GetField("STATE_CD")?.Trim();
-                    string phone = csv.GetField("STORE_PHONE_NO")?.Trim();
+                    string restaurantName = csv.GetField(GetConfiguredField("RSTRNT_LEGAL_NAME"))?.Trim();
+                    string email = csv.GetField(GetConfiguredField("STORE_EMAIL_ADDR"))?.Trim();
+                    string address = csv.GetField(GetConfiguredField("ADDR_LINE1_TXT"))?.Trim();
+                    string city = csv.GetField(GetConfiguredField("CITY_NAME"))?.Trim();
+                    string state = csv.GetField(GetConfiguredField("STATE_CD"))?.Trim();
+                    string phone = csv.GetField(GetConfiguredField("STORE_PHONE_NO"))?.Trim();
 
                     if (!string.IsNullOrEmpty(restaurantName) && !string.IsNullOrEmpty(email))
                     {
                         restaurantData[restaurantName] = new Dictionary<string, string>
-                {
-                    { "STORE_EMAIL_ADDR", email },
-                    { "Restaurant Name", restaurantName },
-                    { "Address", address },
-                    { "City", city },
-                    { "State", state },
-                    { "Phone", phone }
-                };
+                        {
+                            { GetConfiguredField("STORE_EMAIL_ADDR"), email },
+                            { "Restaurant Name", restaurantName },
+                            { "Address", address },
+                            { "City", city },
+                            { "State", state },
+                            { "Phone", phone }
+                        };
                     }
                 }
             }
 
             return restaurantData;
         }
-
         private string CreateEmailFiles(Dictionary<string, List<string>> emailDict)
         {
             string saveDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Generated Emails");
@@ -346,7 +356,7 @@ namespace OutlookDeviceEmailer
                     }
                     restaurantDetailsDict = keyValuePairs;
                     // Append device details instead of overwriting the full email
-                    deviceDetails.AppendLine($"- IP: {keyValuePairs["Wi-Fi IP Address"]}, Serial: {keyValuePairs["Serial Number"]}");
+                    deviceDetails.AppendLine($"•\t: {keyValuePairs["Wi-Fi IP Address"]}, Serial: {keyValuePairs["Serial Number"]}");
                 }
 
                 // Replace placeholders, ensuring devices are added properly
@@ -468,22 +478,6 @@ namespace OutlookDeviceEmailer
                     return Encoding.UTF8.GetString(memoryStream.ToArray());
                 }
             }
-        }
-        private string GetConceptAbbreviationFromCode(string conceptCode)
-        {
-            var conceptMapping = new Dictionary<string, string>
-    {
-        { "1", "OBS" },
-        { "2", "FPS" },
-        { "3", "ROY" },
-        { "4", "DOC" },
-        { "6", "BFG" },
-        { "7", "CIG" },
-        { "10", "INT" },
-        { "99", "ALC" }
-    };
-
-            return conceptMapping.TryGetValue(conceptCode, out string abbreviation) ? abbreviation : "UNKNOWN";
         }
 
         private string GetConceptAbbreviationFromName(string conceptName)

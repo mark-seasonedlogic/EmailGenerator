@@ -1,0 +1,28 @@
+<Window
+    x:Class="OutlookDeviceEmailer.EmailHTMLEditorWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:OutlookDeviceEmailer"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    Title="Email HTML Editor">
+
+    <Grid Padding="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <controls:WebView2
+            x:Name="WebEditor"
+            Grid.Row="0"
+            Margin="0,0,0,10"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch" />
+
+        <Button
+            Content="Save and Close"
+            Grid.Row="1"
+            HorizontalAlignment="Right"
+            Click="SaveTemplate_Click" />
+    </Grid>
+</Window>

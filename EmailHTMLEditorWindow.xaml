@@ -8,20 +8,24 @@
 
     <Grid Padding="10">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-
+        <StackPanel Orientation="Horizontal" Spacing="10" Margin="10" Grid.Row="0">
+            <ComboBox x:Name="File1ComboBox" Header="File 1 Fields" SelectionChanged="OnPlaceholderSelected"/>
+            <ComboBox x:Name="File2ComboBox" Header="File 2 Fields" SelectionChanged="OnPlaceholderSelected"/>
+        </StackPanel>
         <controls:WebView2
             x:Name="WebEditor"
-            Grid.Row="0"
+            Grid.Row="1"
             Margin="0,0,0,10"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch" />
 
         <Button
             Content="Save and Close"
-            Grid.Row="1"
+            Grid.Row="2"
             HorizontalAlignment="Right"
             Click="SaveTemplate_Click" />
     </Grid>

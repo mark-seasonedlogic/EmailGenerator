@@ -1,52 +1,53 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using Windows.ApplicationModel;
-using Windows.ApplicationModel.Activation;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
+﻿using System.IO;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
-using Microsoft.Windows.AppLifecycle;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
-using Microsoft.UI.Xaml.Shapes;
+using EmailGenerator.Interfaces;
+using EmailGenerator.Services;
+using EmailGenerator.Models.Settings;
 using OutlookDeviceEmailer;
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
 
 namespace EmailGenerator
 {
-    /// <summary>
-    /// Provides application-specific behavior to supplement the default Application class.
-    /// </summary>
     public partial class App : Application
     {
-        /// <summary>
-        /// Initializes the singleton application object.  This is the first line of authored code
-        /// executed, and as such is the logical equivalent of main() or WinMain().
-        /// </summary>
+        public static IHost Host { get; private set; }
+
         public App()
         {
             this.InitializeComponent();
+
+            Host = Microsoft.Extensions.Hosting.Host
+                .CreateDefaultBuilder()
+                .ConfigureAppConfiguration((context, config) =>
+                {
+                    config.SetBasePath(Directory.GetCurrentDirectory());
+                    config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+                })
+                .ConfigureServices((context, services) =>
+                {
+                    services.Configure<FedExSettings>(context.Configuration.GetSection("FedEx"));
+
+                    // Configure HttpClient for FedExAuthProvider with BaseAddress
+                    services.AddHttpClient<IFedExAuthProvider, FedExAuthProvider>((sp, client) =>
+                    {
+                        var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<FedExSettings>>().Value;
+                        client.BaseAddress = new System.Uri(settings.ApiBaseUrl);
+                    });
+
+                    // FedExShippingService just uses IFedExAuthProvider, so no special setup needed
+                    services.AddHttpClient<IFedExShippingService, FedExShippingService>();
+
+                    services.AddSingleton<MainWindow>();
+                })
+                .Build();
         }
 
-        /// <summary>
-        /// Invoked when the application is launched.
-        /// </summary>
-        /// <param name="args">Details about the launch request and process.</param>
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
-            m_window = new MainWindow();
-            m_window.Activate();
+            var mainWindow = Host.Services.GetRequiredService<MainWindow>();
+            mainWindow.Activate();
         }
-
-        private Window? m_window;
     }
 }

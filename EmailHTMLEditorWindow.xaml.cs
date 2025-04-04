@@ -9,18 +9,40 @@ using System;
 using System.IO;
 using System.Text;
 using Windows.Graphics;
+using System.Collections.Generic;
 
 namespace OutlookDeviceEmailer
 {
     public sealed partial class EmailHTMLEditorWindow : Window
     {
         private const string TemplateFilePath = "EmailTemplates/email_template.html";
+        private List<string> File1Headers;
+        private List<string> File2Headers;
 
         public EmailHTMLEditorWindow()
         {
             InitializeComponent();
             InitializeWebView();
         }
+        private async void OnPlaceholderSelected(object sender, SelectionChangedEventArgs e)
+        {
+            var comboBox = sender as ComboBox;
+            if (comboBox?.SelectedItem is string placeholder)
+            {
+                string js = $"tinymce.activeEditor.execCommand('mceInsertContent', false, '{{{{{placeholder}}}}}');";
+                await WebEditor.ExecuteScriptAsync(js);
+                comboBox.SelectedIndex = -1; // Reset selection
+            }
+        }
+
+        public EmailHTMLEditorWindow(List<string> file1Headers, List<string> file2Headers)
+        {
+            this.InitializeComponent();
+            this.File1Headers = file1Headers;
+            this.File2Headers = file2Headers;
+            InitializeWebView();
+        }
+
 
         private async void InitializeWebView()
         {

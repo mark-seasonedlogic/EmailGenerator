@@ -59,16 +59,14 @@ namespace EmailGenerator.Helpers
             mailItem.HTMLBody = updatedHtml;
 
             // Add To recipients
-            foreach (var to in toRecipients)
-            {
-                mailItem.To += to.Address + ";";
-            }
+            var toList = string.Join(";", toRecipients.Select(to => to.Address));
+            mailItem.To = toList;
 
+
+ 
             // Add CC recipients
-            foreach (var cc in ccRecipients)
-            {
-                mailItem.CC += cc.Address + ";";
-            }
+            var ccList = string.Join(";", ccRecipients.Select(cc => cc.Address));
+            mailItem.CC = ccList;
 
             // Embed inline images
             foreach (var image in inlineImages)

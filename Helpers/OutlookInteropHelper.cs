@@ -65,10 +65,8 @@ namespace EmailGenerator.Helpers
             }
 
             // Add CC recipients
-            foreach (var cc in ccRecipients)
-            {
-                mailItem.CC += cc.Address + ";";
-            }
+            var ccList = string.Join(";", ccRecipients.Select(cc => cc.Address));
+            mailItem.CC = ccList;
 
             // Embed inline images
             foreach (var image in inlineImages)

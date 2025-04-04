@@ -1,0 +1,37 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <script src='https://myfiles.local/tinymce.min.js'></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            tinymce.init({
+                selector: '#editor',
+                height: 600,
+                menubar: true,
+                plugins: 'lists link image table code',
+                toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image | code',
+                branding: false,
+                license_key: 'gpl',
+                promotion: false,
+                setup: function (editor) {
+                    editor.on('init', function () {
+                        try {
+                            if (typeof sessionStorage !== 'undefined') {
+                                editor.getBody().setAttribute('data-sessionstorage', 'true');
+                            }
+                        } catch (e) {
+                            console.warn("sessionStorage not accessible in this context.");
+                        }
+                    });
+                    editor.on('Paste Change input', function () {
+                        console.log("Content changed due to paste or input.");
+                    });
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+    <textarea id="editor">{{CONTENT}}</textarea>
+</body>
+</html>

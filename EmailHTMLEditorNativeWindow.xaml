@@ -1,0 +1,23 @@
+<Window
+    x:Class="OutlookDeviceEmailer.EmailHTMLEditorNativeWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:winui="using:Microsoft.UI.Xaml"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    Title="Email HTML Editor (Native)">
+
+    <Grid>
+        <StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="10">
+                <Button Content="Bold" Click="FormatText" Tag="bold"/>
+                <Button Content="Italic" Click="FormatText" Tag="italic"/>
+                <Button Content="Underline" Click="FormatText" Tag="underline"/>
+                <Button Content="Ordered List" Click="FormatText" Tag="insertOrderedList"/>
+                <Button Content="Unordered List" Click="FormatText" Tag="insertUnorderedList"/>
+                <Button Content="Insert Link" Click="InsertLink"/>
+            </StackPanel>
+
+            <controls:WebView2 x:Name="webView" VerticalAlignment="Stretch" HorizontalAlignment="Stretch"/>
+        </StackPanel>
+    </Grid>
+</Window>

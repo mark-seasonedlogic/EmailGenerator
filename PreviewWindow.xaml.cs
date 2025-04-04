@@ -167,6 +167,10 @@ namespace OutlookDeviceEmailer
 
         private async void Border_Drop(object sender, DragEventArgs e)
         {
+            
+            
+            
+            
             var items = await e.DataView.GetStorageItemsAsync();
             if (items.Any())
             {

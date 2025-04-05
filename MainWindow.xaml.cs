@@ -1024,6 +1024,14 @@ namespace OutlookDeviceEmailer
 
             return message;
         }
+
+        private void OpenSettings_Click(object sender, RoutedEventArgs e)
+        {
+            var settingsWindow = new Microsoft.UI.Xaml.Window();
+            settingsWindow.Content = new EmailGenerator.Views.SettingsEditorView(); // Use correct namespace
+            settingsWindow.Activate();
+        }
+
         private string ConvertToEml(MailMessage mail)
         {
             using (MemoryStream memoryStream = new MemoryStream())

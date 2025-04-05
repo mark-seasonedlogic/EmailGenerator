@@ -17,6 +17,7 @@
     <None Remove="EmailHTMLEditorNativeWindow.xaml" />
     <None Remove="EmailHTMLEditorWindow.xaml" />
     <None Remove="PreviewWindow.xaml" />
+    <None Remove="Views\SettingsEditorView.xaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,6 +36,7 @@
 
 
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="CsvHelper" Version="33.0.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0-preview.2.25163.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0-preview.2.25163.2" />
@@ -77,6 +79,9 @@
     <None Update="EmailTemplates\Untitled_files\themedata.thmx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <Page Update="Views\SettingsEditorView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Content Include="wwwroot\tinymce\**" CopyToOutputDirectory="PreserveNewest" />

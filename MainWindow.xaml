@@ -27,6 +27,8 @@
             <Button Name="btnGenerateEmails" Content="📧 Generate Emails" Click="SendEmails_Click"
                     Background="#0078D7" Foreground="White" FontSize="16" Padding="10" Width="250"
                     HorizontalAlignment="Center" Margin="0,20,0,0"/>
+            <!--    Settings Button -->
+            <Button Content="Open Settings" Click="OpenSettings_Click" Margin="10"/>
         </StackPanel>
     </Grid>
 </Window>

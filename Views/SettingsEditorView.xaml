@@ -1,0 +1,48 @@
+<Page
+    x:Class="EmailGenerator.Views.SettingsEditorView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:EmailGenerator.Views"
+    xmlns:vm="using:EmailGenerator.ViewModels"
+    xmlns:collections="using:System.Collections.Generic">
+
+    <Grid Padding="12">
+        <TabView>
+            <TabViewItem Header="Field Mappings">
+                <ListView ItemsSource="{x:Bind ViewModel.FieldMappings, Mode=TwoWay}" ScrollViewer.VerticalScrollMode="Auto">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="4">
+                                <TextBox Text="{Binding Key, Mode=TwoWay}" Width="200"/>
+                                <TextBox Text="{Binding Value, Mode=TwoWay}" Width="300"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </TabViewItem>
+
+            <TabViewItem Header="Concept Mappings">
+                <ListView ItemsSource="{x:Bind ViewModel.ConceptMappings, Mode=TwoWay}" ScrollViewer.VerticalScrollMode="Auto">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="4">
+                                <TextBox Text="{Binding Key, Mode=TwoWay}" Width="100"/>
+                                <TextBox Text="{Binding Value, Mode=TwoWay}" Width="300"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </TabViewItem>
+
+            <TabViewItem Header="FedEx Settings">
+                <StackPanel Padding="12" Spacing="8">
+                    <TextBox Header="Client ID" Text="{x:Bind ViewModel.FedEx.ClientId, Mode=TwoWay}" />
+                    <TextBox Header="Client Secret" Text="{x:Bind ViewModel.FedEx.ClientSecret, Mode=TwoWay}" />
+                    <TextBox Header="Account Number" Text="{x:Bind ViewModel.FedEx.AccountNumber, Mode=TwoWay}" />
+                    <TextBox Header="Meter Number" Text="{x:Bind ViewModel.FedEx.MeterNumber, Mode=TwoWay}" />
+                    <TextBox Header="API Base URL" Text="{x:Bind ViewModel.FedEx.ApiBaseUrl, Mode=TwoWay}" />
+                </StackPanel>
+            </TabViewItem>
+        </TabView>
+    </Grid>
+</Page>

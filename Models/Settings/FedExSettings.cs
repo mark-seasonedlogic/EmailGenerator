@@ -10,6 +10,8 @@ namespace EmailGenerator.Models.Settings
     {
         public string ClientId { get; set; }
         public string ClientSecret { get; set; }
+        public string AccountNumber { get; set; }
+        public string MeterNumber { get; set; }
         public string ApiBaseUrl { get; set; }
     }
 

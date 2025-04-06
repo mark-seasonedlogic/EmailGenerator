@@ -3,14 +3,31 @@
     x:Class="EmailGenerator.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:EmailGenerator">
+    xmlns:local="using:EmailGenerator"
+    xmlns:converters="using:EmailGenerator.Converters">
+
     <Application.Resources>
         <ResourceDictionary>
+
+            <!-- 
+              MergedDictionaries allows you to import XAML-based resources such as styles, themes, and control templates.
+              These are typically shared UI definitions provided by the WinUI framework or your app's themes.
+            -->
             <ResourceDictionary.MergedDictionaries>
+                <!-- Required for WinUI 3 controls like TabView, NumberBox, etc. -->
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <!-- Other merged dictionaries here -->
+                <!-- Add any additional theme dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
+
+            <!-- 
+              BooleanToVisibilityConverter is a user-defined converter used in data binding scenarios.
+              It converts a boolean value to Visibility.Visible (for true) or Visibility.Collapsed (for false).
+
+              We need this converter to dynamically show or hide UI elements, such as the Save button in the Settings view,
+              based on whether the settings have been modified.
+            -->
+            <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

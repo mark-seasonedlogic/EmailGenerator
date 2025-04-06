@@ -28,6 +28,7 @@ using System.Diagnostics;
 using EmailGenerator.Models;
 using Outlook = Microsoft.Office.Interop.Outlook;
 using EmailGenerator.Helpers;
+using EmailGenerator.Models.Settings;
 
 namespace OutlookDeviceEmailer
 {
@@ -316,13 +317,21 @@ namespace OutlookDeviceEmailer
                         if (!emailDict.ContainsKey(recipientEmail))
                             emailDict[recipientEmail] = new List<string>();
 
-                        // Merge restaurant & device data into a single key-value string
-                        string formattedData = string.Join(", ",
-                           restaurantInfo.Where(kv => kv.Key != "STORE_EMAIL_ADDR")
-                                         .Select(kv => $"{kv.Key}: {kv.Value}")) +
-                           $", MD + Serial: {ip}, Serial Number: {serial}, JVP EMAIL: {jvpEmail}, MVP EMAIL: {mvpEmail}";
+                        // Merge restaurant & device data into a single base64-encoded key-value string
+                        var formattedDataParts = restaurantInfo
+                            .Where(kv => kv.Key != "STORE_EMAIL_ADDR")
+                            .Select(kv => $"{kv.Key}: {Convert.ToBase64String(Encoding.UTF8.GetBytes(kv.Value ?? ""))}")
+                            .ToList();
 
-                        
+                        // Add device-specific values (also base64-encoded)
+                        formattedDataParts.Add($"MD + Serial: {Convert.ToBase64String(Encoding.UTF8.GetBytes(ip ?? ""))}");
+                        formattedDataParts.Add($"Serial Number: {Convert.ToBase64String(Encoding.UTF8.GetBytes(serial ?? ""))}");
+                        formattedDataParts.Add($"JVP EMAIL: {Convert.ToBase64String(Encoding.UTF8.GetBytes(jvpEmail ?? ""))}");
+                        formattedDataParts.Add($"MVP EMAIL: {Convert.ToBase64String(Encoding.UTF8.GetBytes(mvpEmail ?? ""))}");
+
+                        string formattedData = string.Join(", ", formattedDataParts);
+
+
 
                         emailDict[recipientEmail].Add(formattedData);
                     }
@@ -375,100 +384,72 @@ namespace OutlookDeviceEmailer
             return File.Exists(htmlPath) ? File.ReadAllText(htmlPath, Encoding.UTF8) : "<p>[No HTML Template Found]</p>";
         }
 
-        private async Task<string>  CreateEmailFilesFromHTML(Dictionary<string, List<string>> emailDict)
+        private async Task<string> CreateEmailFilesFromHTML(Dictionary<string, List<string>> emailDict)
         {
             string saveDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Generated Emails (HTML)");
             Directory.CreateDirectory(saveDirectory);
 
-            string emailTemplate = LoadHtmlEmailTemplate(); // Load the HTML template
+
+            string emailTemplate = LoadHtmlEmailTemplate();
+            AppSettings settings = AppSettingsLoader.LoadFromFile("appsettings.json");
+            var fieldMappings = settings.FieldMappings;
+            var deviceFields = new List<string> { "MD + Serial" }; // This can later come from config
 
             foreach (var recipient in emailDict.Keys)
             {
-                string formattedEmail = emailTemplate; // Work on a fresh copy per recipient
-                StringBuilder deviceDetails = new StringBuilder(); // Store all device entries
+                string formattedEmail = emailTemplate;
 
-                Dictionary<string, string> restaurantDetailsDict = new Dictionary<string, string>();
-                Dictionary<string,string> keyValuePairs = new Dictionary<string, string>();
+                // Convert each device's CSV-formatted data string into key-value dictionaries
+                var deviceRows = emailDict[recipient]
+                    .Select(dataStr => ParseKeyValueString(dataStr))
+                    .ToList();
 
-                foreach (var dataString in emailDict[recipient])
+                // Take the first device's row as the representative for restaurant fields
+                var restaurantDetailsDict = deviceRows.FirstOrDefault() ?? new();
+
+                // Insert generated HTML list of devices
+                var deviceHtml = EmailTemplateHelper.GenerateDeviceListHtml(deviceRows, deviceFields, fieldMappings);
+                formattedEmail = formattedEmail.Replace("{{Device List}}", deviceHtml);
+
+                // Replace all template tokens using field mappings
+                formattedEmail = EmailTemplateHelper.ApplyFieldMappingsToTemplate(
+                    formattedEmail,
+                    restaurantDetailsDict,
+                    fieldMappings
+                );
+
+                // Prepare recipient data for .msg generation
+                string restaurantNumber = recipient.Split('@')[0];
+                restaurantNumber = restaurantNumber.Substring(restaurantNumber.Length - 4);
+
+                var toRecipientsList = new List<MailAddress> { new MailAddress(recipient) };
+                var ccRecipientList = new List<MailAddress>
+        {
+            new("KarlyLopez@BloominBrands.com"),
+            new("JoelCapo@BloominBrands.com")
+        };
+
+                // Extract CCs from template data (safe access)
+                string jvpEmail = ReplacePlaceholders("{{JVP EMAIL}}", restaurantDetailsDict);
+                string mvpEmail = ReplacePlaceholders("{{MVP EMAIL}}", restaurantDetailsDict);
+
+                try { ccRecipientList.Add(new MailAddress(jvpEmail)); } catch { }
+                try { ccRecipientList.Add(new MailAddress(mvpEmail)); } catch { }
+
+                var mail = new MailMessage
                 {
-                    // Parse key-value pairs from CSV-formatted string
-                    keyValuePairs = new Dictionary<string, string>();
+                    Subject = "Duplicate Android POSi Tablets in your Restaurant",
+                    Body = formattedEmail,
+                    IsBodyHtml = true
+                };
 
-                    foreach (var entry in dataString.Split(','))
-                    {
-                        var pair = entry.Split(':', 2);
-                        if (pair.Length == 2)
-                        {
-                            keyValuePairs[pair[0].Trim()] = pair[1].Trim();
-                        }
-                    }
-
-                    restaurantDetailsDict = keyValuePairs;
-
-                    // Format device info as list item
-                    //Try using new device detail columns:
-                    //deviceDetails.AppendLine($"<li>{keyValuePairs["Wi-Fi IP Address"]}, Serial: {keyValuePairs["Serial Number"]}</li>");
-                    deviceDetails.AppendLine($"<li>{keyValuePairs["MD + Serial"]}</li>");
-                }
-                
-                // Replace device list placeholder with actual HTML list
-                formattedEmail = formattedEmail.Replace("{{Device List}}", $"<ul>{deviceDetails}</ul>");
-
-                // Replace placeholders for restaurant/device fields
-                foreach (var key in restaurantDetailsDict.Keys)
-                {
-                    string placeholder = $"{{{{{key}}}}}"; // e.g., {{Wi-Fi IP Address}}
-                    formattedEmail = formattedEmail.Replace(placeholder, restaurantDetailsDict[key]);
-                }
-                //string supportEmail = ReplacePlaceholders("{{Support Email}}", keyValuePairs);
-                string jvpEmail = ReplacePlaceholders("{{JVP EMAIL}}", keyValuePairs);
-                string mvpEmail = ReplacePlaceholders("{{MVP EMAIL}}", keyValuePairs);
-                //string mpEmail = ReplacePlaceholders("{{MARKTNG_MGR_NAME}}", keyValuePairs);
-
-
-                string restaurantNumber = recipient.Split('@')[0]; // e.g.,
-                restaurantNumber = restaurantNumber.Substring(restaurantNumber.Length - 4);// { emailDict.TryGetValue("RSTRNT_NBR") };
-                List<MailAddress> ccRecipientList = new List<MailAddress>();
-                List<MailAddress> toRecipientsList = new List<MailAddress>();   
-                // Create the MailMessage
-                MailMessage mail = new MailMessage();
                 mail.To.Add(recipient);
-                toRecipientsList.Add(new MailAddress(recipient));
-                mail.CC.Add(new MailAddress("KarlyLopez@BloominBrands.com"));
-                ccRecipientList.Add(new MailAddress("KarlyLopez@BloominBrands.com"));
-                mail.CC.Add(new MailAddress("JoelCapo@BloominBrands.com"));
-                ccRecipientList.Add(new MailAddress("JoelCapo@BloominBrands.com"));
-                try
-                {
-                    mail.CC.Add(new MailAddress(jvpEmail));
-                    ccRecipientList.Add(new MailAddress(jvpEmail));
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                }
-                try
-                {
-                    mail.CC.Add(new MailAddress(mvpEmail));
-                    ccRecipientList.Add(new MailAddress(mvpEmail));
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                }
-
-                mail.Subject = "Duplicate Android POSi Tablets in your Restaurant";
-                mail.Body = formattedEmail;
-                mail.IsBodyHtml = true;
+                foreach (var cc in ccRecipientList)
+                    mail.CC.Add(cc);
 
                 string safeName = recipient.Replace("@", "_at_").Replace(".", "_");
-                string emlFileName = Path.Combine(saveDirectory, $"{safeName}.eml");
                 string msgFileName = Path.Combine(saveDirectory, $"{safeName}.msg");
 
-
-                //mail.From = new MailAddress("jugaldez@Bloominbrands.com");
-                //Try using Outlook Interop
                 OutlookInteropHelper.GenerateMsgWithEmbeddedImagesAndPdf(
                     subject: mail.Subject,
                     htmlInput: mail.Body,
@@ -479,27 +460,30 @@ namespace OutlookDeviceEmailer
                     toRecipients: toRecipientsList,
                     ccRecipients: ccRecipientList
                 );
-                // Convert to .eml
-                //MimeMessage emlMessage = await ConvertToEmlWithEmbeddedImages(mail, "C:\\Users\\MarkYoung\\Documents\\Tablet CleanUp Return Labels",restaurantNumber);
-                
-                /*
-                emlMessage.From.Clear();
-                emlMessage.From.Add(MailboxAddress.Parse("MarkYoung@Bloominbrands.com"));
-                */
-                
-                // Save to EML format
-                //using (var stream = File.Create(emlFileName))
-                //{
-                //    emlMessage.WriteTo(stream);
-                //}
-                //ConvertEmlToMsg(emlMessage, msgFileName);
-                //ConvertEmlToMsgWithOutlook(emlFileName, msgFileName);
-                //CleanMsgWithOutlookLateBinding(msgFileName, msgFileName.Replace(".msg", "_clean.msg"));
-
-
             }
 
             return saveDirectory;
+        }
+
+        private Dictionary<string, string> ParseKeyValueString(string dataString)
+        {
+            return dataString.Split(',')
+        .Select(entry => entry.Split(':', 2))
+        .Where(pair => pair.Length == 2)
+        .ToDictionary(
+            pair => pair[0].Trim(),
+            pair =>
+            {
+                try
+                {
+                    var bytes = Convert.FromBase64String(pair[1].Trim());
+                    return Encoding.UTF8.GetString(bytes);
+                }
+                catch
+                {
+                    return "[DecodeError]";
+                }
+            });
         }
 
         public static void CleanMsgWithOutlookLateBinding(string msgInputPath, string msgOutputPath)
@@ -1027,9 +1011,17 @@ namespace OutlookDeviceEmailer
 
         private void OpenSettings_Click(object sender, RoutedEventArgs e)
         {
-            var settingsWindow = new Microsoft.UI.Xaml.Window();
-            settingsWindow.Content = new EmailGenerator.Views.SettingsEditorView(); // Use correct namespace
-            settingsWindow.Activate();
+            try
+            {
+                var settingsWindow = new Microsoft.UI.Xaml.Window();
+                settingsWindow.Content = new EmailGenerator.Views.SettingsEditorView(); // Use correct namespace
+                settingsWindow.Activate();
+            }
+            catch(Exception ex)
+            {
+                Debug.WriteLine($"SettingsEditorView error: {ex}");
+                throw;
+            }
         }
 
         private string ConvertToEml(MailMessage mail)

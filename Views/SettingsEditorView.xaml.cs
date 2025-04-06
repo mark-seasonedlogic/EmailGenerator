@@ -2,6 +2,7 @@ using EmailGenerator.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 using EmailGenerator.Models.Settings;
 using EmailGenerator.Helpers;
+using Microsoft.UI.Xaml;
 
 
 namespace EmailGenerator.Views
@@ -16,6 +17,10 @@ namespace EmailGenerator.Views
 
             var settings = AppSettingsLoader.LoadFromFile("appsettings.json");
             ViewModel = new SettingsEditorViewModel(settings);
+        }
+        private void OnSaveClick(object sender, RoutedEventArgs e)
+        {
+            ViewModel.Save("appsettings.json");
         }
     }
 }

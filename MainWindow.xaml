@@ -4,31 +4,20 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Email Generator">
 
-    <Grid Name="RootGrid" Padding="20">
-        <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Width="500">
-            <TextBlock Text="Email Generator" FontSize="24" FontWeight="Bold" Foreground="Black" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+    <NavigationView IsSettingsVisible="True"
+                    PaneDisplayMode="Left"
+                    SelectionChanged="NavigationView_SelectionChanged">
+            <NavigationView.MenuItems>
+            <NavigationViewItem Content="Email Generator" Icon="Mail" Tag="Generator" />
+            <NavigationViewItem Content="Editor" Icon="Edit" Tag="Editor" />
+            <NavigationViewItem Content="Settings" Icon="Setting" Tag="Settings" />
+            <NavigationViewItem Content="Dashboard" Icon="Home" Tag="dashboard" IsSelected="True" />
 
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                <Button Name="btnSelectDeviceFile" Content="📂 Select Device File" Click="SelectDeviceFile_Click" Width="200"/>
-                <TextBlock Name="txtDeviceFilePath" Text="No file selected" Margin="10,0,0,0" VerticalAlignment="Center"/>
-            </StackPanel>
+        </NavigationView.MenuItems>
+        <Grid x:Name="RootGrid">
+            <Frame x:Name="MainFrame" />
+        </Grid>
+        
 
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                <Button Name="btnSelectEmailFile" Content="📂 Select Email File" Click="SelectEmailFile_Click" Width="200"/>
-                <TextBlock Name="txtEmailFilePath" Text="No file selected" Margin="10,0,0,0" VerticalAlignment="Center"/>
-            </StackPanel>
-
-            <!-- Edit Email Template Button -->
-            <Button Name="btnEditTemplate" Content="📝 Edit Email Template" Click="EditTemplate_Click"
-                    Background="#FFA500" Foreground="White" FontSize="14" Padding="8" Width="250"
-                    HorizontalAlignment="Center" Margin="10"/>
-
-            <!-- Generate Emails Button -->
-            <Button Name="btnGenerateEmails" Content="📧 Generate Emails" Click="SendEmails_Click"
-                    Background="#0078D7" Foreground="White" FontSize="16" Padding="10" Width="250"
-                    HorizontalAlignment="Center" Margin="0,20,0,0"/>
-            <!--    Settings Button -->
-            <Button Content="Open Settings" Click="OpenSettings_Click" Margin="10"/>
-        </StackPanel>
-    </Grid>
+    </NavigationView>
 </Window>

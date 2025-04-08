@@ -17,6 +17,8 @@
     <None Remove="EmailHTMLEditorNativeWindow.xaml" />
     <None Remove="EmailHTMLEditorWindow.xaml" />
     <None Remove="PreviewWindow.xaml" />
+    <None Remove="Views\DashboardView.xaml" />
+    <None Remove="Views\EmailGeneratorView.xaml" />
     <None Remove="Views\SettingsEditorView.xaml" />
   </ItemGroup>
 
@@ -79,6 +81,12 @@
     <None Update="EmailTemplates\Untitled_files\themedata.thmx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <Page Update="Views\DashboardView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Update="Views\EmailGeneratorView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Update="Views\SettingsEditorView.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>

@@ -29,14 +29,14 @@ using EmailGenerator.Models;
 using Outlook = Microsoft.Office.Interop.Outlook;
 using EmailGenerator.Helpers;
 using EmailGenerator.Models.Settings;
+using EmailGenerator.Views;
 
 namespace OutlookDeviceEmailer
 {
     public partial class MainWindow : Window
     {
-        private readonly IConfiguration _config;
-        private string deviceFilePath;
-        private string emailFilePath;
+        public readonly IConfiguration _config;
+
         private readonly Dictionary<string, string> conceptMappings;
         private readonly IFedExShippingService _shippingService;
         public MainWindow(IFedExShippingService shippingService)
@@ -51,10 +51,46 @@ namespace OutlookDeviceEmailer
             conceptMappings = _config.GetSection("ConceptMappings").Get<Dictionary<string, string>>();
 
             InitializeComponent();
-            ApplyAcrylicEffect();
-            SetRoundedCorners();
-            SetWindowSize(600, 400);
+            this.ExtendsContentIntoTitleBar = true;
+
+            var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            WindowId windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
+            AppWindow appWindow = AppWindow.GetFromWindowId(windowId);
+
+            appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
+            var displayArea = DisplayArea.GetFromWindowId(windowId, DisplayAreaFallback.Primary);
+            appWindow.MoveAndResize(displayArea.WorkArea);
+            MainFrame.Navigate(typeof(DashboardView)); // Default page
+            appWindow.Title = "Device Detail Mail Merge";
         }
+        private void NavigationView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+        {
+            if (args.IsSettingsSelected)
+            {
+                MainFrame.Navigate(typeof(SettingsEditorView));
+            }
+            else if (args.SelectedItem is NavigationViewItem selectedItem)
+            {
+                switch (selectedItem.Tag)
+                {
+                    case "Editor":
+                        // Replace with your editor view when available
+                        // MainFrame.Navigate(typeof(HtmlEditorView));
+                        break;
+                    case "Generator":
+                        MainFrame.Navigate(typeof(EmailGeneratorView));
+                        break;
+                    case "Settings":
+                        MainFrame.Navigate(typeof(SettingsEditorView));
+                        break;
+                    case "dashboard":
+                        MainFrame.Navigate(typeof(EmailGenerator.Views.DashboardView));
+                        break;
+
+                }
+            }
+        }
+
         public MainWindow()
         {
             _config = new ConfigurationBuilder()
@@ -88,33 +124,9 @@ namespace OutlookDeviceEmailer
             return _config[$"FieldMappings:{key}"] ?? key;
         }
 
-        private void EditTemplate_Click(object sender, RoutedEventArgs e)
-        {
-            if (string.IsNullOrEmpty(deviceFilePath) || string.IsNullOrEmpty(emailFilePath))
-            {
-                ShowMessage("Error", "Please select both CSV files before editing the template.");
-                return;
-            }
 
-            var deviceHeaders = GetHeadersFromCsv(deviceFilePath);
-            var emailHeaders = GetHeadersFromCsv(emailFilePath);
 
-            EmailHTMLEditorWindow editorWindow = new EmailHTMLEditorWindow(deviceHeaders, emailHeaders);
-            editorWindow.Activate();
-        }
-
-        private List<string> GetHeadersFromCsv(string filePath)
-        {
-            using var reader = new StreamReader(filePath);
-            using var csv = new CsvReader(reader, new CsvHelper.Configuration.CsvConfiguration(CultureInfo.InvariantCulture));
-
-            if (csv.Read() && csv.ReadHeader())
-            {
-                return csv.HeaderRecord.ToList();
-            }
-
-            return new List<string>();
-        }
+        
         private void SetRoundedCorners()
 {
     IntPtr hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
@@ -144,127 +156,8 @@ namespace OutlookDeviceEmailer
                 };
             }
         }
-        private async void SelectDeviceFile_Click(object sender, RoutedEventArgs e)
-        {
-            deviceFilePath = await SelectFile("Select Device List CSV");
-            txtDeviceFilePath.Text = string.IsNullOrEmpty(deviceFilePath) ? "No file selected" : deviceFilePath;
-        }
 
-        private async void SelectEmailFile_Click(object sender, RoutedEventArgs e)
-        {
-            emailFilePath = await SelectFile("Select Email List CSV");
-            txtEmailFilePath.Text = string.IsNullOrEmpty(emailFilePath) ? "No file selected" : emailFilePath;
-        }
-
-        private async Task<ContentDialogResult> ShowConfirmationDialog(string title, string message)
-        {
-            ContentDialog dialog = new ContentDialog
-            {
-                Title = title,
-                Content = message,
-                PrimaryButtonText = "OK",
-                CloseButtonText = "Cancel",
-                XamlRoot = this.Content.XamlRoot
-            };
-
-            return await dialog.ShowAsync();
-        }
-
-        private async Task<string> SelectFile(string title)
-        {
-            var picker = new FileOpenPicker();
-
-            // Required in WinUI 3
-            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
-
-            picker.SuggestedStartLocation = PickerLocationId.Desktop;
-            picker.FileTypeFilter.Add(".csv");
-
-            StorageFile file = await picker.PickSingleFileAsync();
-            return file?.Path ?? string.Empty;
-        }
-
-        private static bool isDialogOpen = false;
-        private async System.Threading.Tasks.Task ShowMessage(string title, string message)
-        {
-            if (isDialogOpen)
-                return; // Prevent multiple dialogs from opening
-
-            isDialogOpen = true; // Set flag
-
-            ContentDialog dialog = new ContentDialog
-            {
-                Title = title,
-                Content = message,
-                CloseButtonText = "OK",
-                XamlRoot = this.Content.XamlRoot // Required in WinUI 3
-            };
-
-            await dialog.ShowAsync();
-            isDialogOpen = false;
-        }
-
-        private async void SendEmails_Click(object sender, RoutedEventArgs e)
-        {
-            if (string.IsNullOrEmpty(deviceFilePath) || string.IsNullOrEmpty(emailFilePath))
-            {
-                await ShowMessage("Error", "Please select both CSV files before proceeding.");
-                return;
-            }
-
-            Dictionary<string, Dictionary<string,string>> emailLookup = LoadEmailLookup(emailFilePath);
-            Dictionary<string, List<string>> emailDict = GenerateEmailDictionary(deviceFilePath, emailLookup);
-
-            string generatedEmailDirectory = await CreateEmailFilesFromHTML(emailDict); // Now returns directory
-
-            var result = await ShowConfirmationDialog("Emails Generated", "Preview Emails?");
-            if (result == ContentDialogResult.Primary) // User clicked OK
-            {
-                PreviewWindow previewWindow = new PreviewWindow(generatedEmailDirectory);
-                previewWindow.Activate();
-            }
-        }
-
-        private Dictionary<string, Dictionary<string, string>> LoadEmailLookup(string emailFile)
-        {
-            var emailLookup = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
-
-            using (var reader = new StreamReader(emailFile))
-            using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)))
-            {
-                if (!csv.Read() || !csv.ReadHeader())
-                {
-                    throw new Exception("Restaurant directory CSV file is empty or missing headers.");
-                }
-
-                var headers = csv.HeaderRecord.ToList();
-
-                while (csv.Read())
-                {
-                    string conceptCode = csv.GetField(GetConfiguredField("CONCEPT_CD"))?.Trim();
-                    string restaurantNumber = csv.GetField(GetConfiguredField("RSTRNT_NBR"))?.Trim();
-
-                    if (string.IsNullOrEmpty(conceptCode) || string.IsNullOrEmpty(restaurantNumber))
-                        continue;
-
-                    string conceptAbbreviation = GetConceptAbbreviationFromCode(conceptCode);
-                    string paddedRestaurantNumber = restaurantNumber.PadLeft(4, '0');
-                    string lookupKey = $"{paddedRestaurantNumber}{conceptAbbreviation}";
-
-                    var restaurantData = new Dictionary<string, string>();
-                    foreach (var header in headers)
-                    {
-                        string value = csv.GetField(header)?.Trim();
-                        restaurantData[header] = value;
-                    }
-
-                    emailLookup[lookupKey] = restaurantData;
-                }
-            }
-
-            return emailLookup;
-        }
+       
 
         private Dictionary<string, List<string>> GenerateEmailDictionary(string deviceFile, Dictionary<string, Dictionary<string, string>> emailLookup)
         {
@@ -378,113 +271,7 @@ namespace OutlookDeviceEmailer
 
             return restaurantData;
         }
-        private string LoadHtmlEmailTemplate()
-        {
-            string htmlPath = "EmailTemplates/email_template_content.html";
-            return File.Exists(htmlPath) ? File.ReadAllText(htmlPath, Encoding.UTF8) : "<p>[No HTML Template Found]</p>";
-        }
 
-        private async Task<string> CreateEmailFilesFromHTML(Dictionary<string, List<string>> emailDict)
-        {
-            string saveDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Generated Emails (HTML)");
-            Directory.CreateDirectory(saveDirectory);
-
-
-            string emailTemplate = LoadHtmlEmailTemplate();
-            AppSettings settings = AppSettingsLoader.LoadFromFile("appsettings.json");
-            var fieldMappings = settings.FieldMappings;
-            var deviceFields = new List<string> { "MD + Serial" }; // This can later come from config
-
-            foreach (var recipient in emailDict.Keys)
-            {
-                string formattedEmail = emailTemplate;
-
-                // Convert each device's CSV-formatted data string into key-value dictionaries
-                var deviceRows = emailDict[recipient]
-                    .Select(dataStr => ParseKeyValueString(dataStr))
-                    .ToList();
-
-                // Take the first device's row as the representative for restaurant fields
-                var restaurantDetailsDict = deviceRows.FirstOrDefault() ?? new();
-
-                // Insert generated HTML list of devices
-                var deviceHtml = EmailTemplateHelper.GenerateDeviceListHtml(deviceRows, deviceFields, fieldMappings);
-                formattedEmail = formattedEmail.Replace("{{Device List}}", deviceHtml);
-
-                // Replace all template tokens using field mappings
-                formattedEmail = EmailTemplateHelper.ApplyFieldMappingsToTemplate(
-                    formattedEmail,
-                    restaurantDetailsDict,
-                    fieldMappings
-                );
-
-                // Prepare recipient data for .msg generation
-                string restaurantNumber = recipient.Split('@')[0];
-                restaurantNumber = restaurantNumber.Substring(restaurantNumber.Length - 4);
-
-                var toRecipientsList = new List<MailAddress> { new MailAddress(recipient) };
-                var ccRecipientList = new List<MailAddress>
-        {
-            new("KarlyLopez@BloominBrands.com"),
-            new("JoelCapo@BloominBrands.com")
-        };
-
-                // Extract CCs from template data (safe access)
-                string jvpEmail = ReplacePlaceholders("{{JVP EMAIL}}", restaurantDetailsDict);
-                string mvpEmail = ReplacePlaceholders("{{MVP EMAIL}}", restaurantDetailsDict);
-
-                try { ccRecipientList.Add(new MailAddress(jvpEmail)); } catch { }
-                try { ccRecipientList.Add(new MailAddress(mvpEmail)); } catch { }
-
-                var mail = new MailMessage
-                {
-                    Subject = "Duplicate Android POSi Tablets in your Restaurant",
-                    Body = formattedEmail,
-                    IsBodyHtml = true
-                };
-
-                mail.To.Add(recipient);
-                foreach (var cc in ccRecipientList)
-                    mail.CC.Add(cc);
-
-                string safeName = recipient.Replace("@", "_at_").Replace(".", "_");
-                string msgFileName = Path.Combine(saveDirectory, $"{safeName}.msg");
-
-                OutlookInteropHelper.GenerateMsgWithEmbeddedImagesAndPdf(
-                    subject: mail.Subject,
-                    htmlInput: mail.Body,
-                    imageDirectory: "C:\\Users\\MarkYoung\\source\\repos\\EmailGenerator\\bin\\x64\\Debug\\net8.0-windows10.0.19041.0\\win-x64\\EmailTemplates\\Untitled_files\\",
-                    msgOutputPath: msgFileName,
-                    pdfFolderPath: "C:\\Users\\MarkYoung\\Documents\\Tablet CleanUp Return Labels",
-                    restaurantNumber: restaurantNumber,
-                    toRecipients: toRecipientsList,
-                    ccRecipients: ccRecipientList
-                );
-            }
-
-            return saveDirectory;
-        }
-
-        private Dictionary<string, string> ParseKeyValueString(string dataString)
-        {
-            return dataString.Split(',')
-        .Select(entry => entry.Split(':', 2))
-        .Where(pair => pair.Length == 2)
-        .ToDictionary(
-            pair => pair[0].Trim(),
-            pair =>
-            {
-                try
-                {
-                    var bytes = Convert.FromBase64String(pair[1].Trim());
-                    return Encoding.UTF8.GetString(bytes);
-                }
-                catch
-                {
-                    return "[DecodeError]";
-                }
-            });
-        }
 
         public static void CleanMsgWithOutlookLateBinding(string msgInputPath, string msgOutputPath)
         {
@@ -577,15 +364,7 @@ namespace OutlookDeviceEmailer
 
             return saveDirectory;
         }
-        public static string ReplacePlaceholders(string template, Dictionary<string, string> values)
-        {
-            foreach (var pair in values)
-            {
-                string placeholder = $"{{{{{pair.Key}}}}}";
-                template = template.Replace(placeholder, pair.Value);
-            }
-            return template;
-        }
+        
         private string LoadEmailTemplate()
         {
             string templatePath = "email_template.txt";

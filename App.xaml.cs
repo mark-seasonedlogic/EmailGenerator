@@ -7,12 +7,15 @@ using EmailGenerator.Interfaces;
 using EmailGenerator.Services;
 using EmailGenerator.Models.Settings;
 using OutlookDeviceEmailer;
+using System;
+using EmailGenerator.Views;
 
 namespace EmailGenerator
 {
     public partial class App : Application
     {
         public static IHost Host { get; private set; }
+        public static Window MainWindow { get; private set; }
 
         public App()
         {
@@ -39,6 +42,14 @@ namespace EmailGenerator
                     // FedExShippingService just uses IFedExAuthProvider, so no special setup needed
                     services.AddHttpClient<IFedExShippingService, FedExShippingService>();
 
+                    //EmailDataService for processing restaurant-level details
+                    services.AddSingleton<EmailDataService>();
+
+                    //EmailBuilderService for rendering email content and writing output files
+                    services.AddSingleton<EmailBuilderService>();
+
+                    //DashboardViewModel for binding to the DashboardView
+                    services.AddSingleton<DashboardViewModel>();
                     services.AddSingleton<MainWindow>();
                 })
                 .Build();
@@ -46,8 +57,8 @@ namespace EmailGenerator
 
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
-            var mainWindow = Host.Services.GetRequiredService<MainWindow>();
-            mainWindow.Activate();
+            MainWindow = Host.Services.GetRequiredService<MainWindow>();
+            MainWindow.Activate();
         }
     }
 }

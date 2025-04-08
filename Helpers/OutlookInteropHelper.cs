@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Mail;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
 namespace EmailGenerator.Helpers
@@ -106,6 +107,13 @@ namespace EmailGenerator.Helpers
             // Save as .msg
             const int olMSGUnicode = 3;
             mailItem.SaveAs(msgOutputPath, olMSGUnicode);
+
+            // Clean up 
+            if (mailItem != null) Marshal.ReleaseComObject(mailItem);
+            if (outlookApp != null) Marshal.ReleaseComObject(outlookApp);
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+
         }
     }
 }
